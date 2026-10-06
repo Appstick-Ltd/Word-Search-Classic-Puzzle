@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class StorageService {
   static const String _keyHighLevel = 'high_level';
   static const String _keyHaptic = 'haptic_enabled';
+  static const String _keySound = 'sound_enabled';
   static const String _keyTheme = 'theme_id';
 
   static late SharedPreferences _prefs;
@@ -19,6 +20,14 @@ class StorageService {
     if (level > getHighestLevel()) {
       await _prefs.setInt(_keyHighLevel, level);
     }
+  }
+
+  static bool getSoundEnabled() {
+    return _prefs.getBool(_keySound) ?? true;
+  }
+
+  static Future<void> setSoundEnabled(bool value) async {
+    await _prefs.setBool(_keySound, value);
   }
 
   static bool getHapticEnabled() {

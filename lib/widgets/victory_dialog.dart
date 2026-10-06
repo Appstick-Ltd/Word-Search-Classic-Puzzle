@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/app_theme.dart';
 import '../services/haptics.dart';
+import '../services/sound_service.dart';
 import 'game_button.dart';
 
 class VictoryDialog extends StatefulWidget {
@@ -67,18 +68,21 @@ class _VictoryDialogState extends State<VictoryDialog>
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) {
           Haptics.heavy();
+          SoundService.playSelect();
           _star1Controller.forward();
         }
       });
       Future.delayed(const Duration(milliseconds: 320), () {
         if (mounted) {
           Haptics.heavy();
+          SoundService.playSelect();
           _star2Controller.forward();
         }
       });
       Future.delayed(const Duration(milliseconds: 540), () {
         if (mounted) {
           Haptics.heavy();
+          SoundService.playSelect();
           _star3Controller.forward();
         }
       });

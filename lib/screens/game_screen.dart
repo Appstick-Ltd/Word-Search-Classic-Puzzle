@@ -8,6 +8,7 @@ import '../models/game_models.dart';
 import '../providers/game_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/haptics.dart';
+import '../services/sound_service.dart';
 import '../widgets/confetti_overlay.dart';
 import '../widgets/praise_toast.dart';
 import '../widgets/victory_dialog.dart';
@@ -247,6 +248,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
               ),
               onPressed: () {
                 Haptics.select();
+                SoundService.playTap();
                 notifier.restartCurrentLevel();
               },
             ),

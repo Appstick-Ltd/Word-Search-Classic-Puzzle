@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/game_models.dart';
 import '../services/haptics.dart';
 import '../services/level_generator.dart';
+import '../services/sound_service.dart';
 import '../services/storage_service.dart';
 
 final highestLevelProvider = StateProvider<int>((ref) {
@@ -56,6 +57,7 @@ class GameNotifier extends StateNotifier<GameState> {
     if (state.status != GameStatus.playing) return;
     state = state.copyWith(currentSelection: [coord]);
     Haptics.light();
+    SoundService.playSelect();
   }
 
   void updateSelection(GridCoordinate coord) {
@@ -89,6 +91,7 @@ class GameNotifier extends StateNotifier<GameState> {
 
       if (newSelection.length != state.currentSelection.length) {
         Haptics.light();
+        SoundService.playSelect();
       }
       state = state.copyWith(currentSelection: newSelection);
     }
@@ -123,6 +126,12 @@ class GameNotifier extends StateNotifier<GameState> {
 
       final allFound = updatedWords.every((w) => w.isFound);
 
+      if (allFound) {
+        SoundService.playVictory();
+      } else {
+        SoundService.playWordFound();
+      }
+
       state = state.copyWith(
         words: updatedWords,
         currentSelection: const [],
@@ -137,6 +146,7 @@ class GameNotifier extends StateNotifier<GameState> {
         }
       }
     } else {
+      SoundService.playWrong();
       state = state.copyWith(currentSelection: const []);
     }
   }

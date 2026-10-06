@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/haptics.dart';
+import '../services/sound_service.dart';
 
 class GameButton extends StatefulWidget {
   final VoidCallback? onTap;
@@ -42,6 +43,7 @@ class _GameButtonState extends State<GameButton> with SingleTickerProviderStateM
     if (widget.onTap == null) return;
     setState(() => _isPressed = true);
     Haptics.light();
+    SoundService.playTap();
   }
 
   void _handleTapUp(TapUpDetails details) {

@@ -17,11 +17,13 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late bool _hapticEnabled;
+  late bool _soundEnabled;
 
   @override
   void initState() {
     super.initState();
     _hapticEnabled = StorageService.getHapticEnabled();
+    _soundEnabled = StorageService.getSoundEnabled();
   }
 
   @override
@@ -156,25 +158,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                           ],
                         ),
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 4,
-                          ),
-                          title: Text(
-                            'Haptic Feedback',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: currentTheme.textPrimary,
+                        child: Column(
+                          children: [
+                            SwitchListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              title: Text(
+                                'Sound Effects',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: currentTheme.textPrimary,
+                                ),
+                              ),
+                              value: _soundEnabled,
+                              activeThumbColor: currentTheme.switchActiveColor,
+                              onChanged: (value) {
+                                setState(() => _soundEnabled = value);
+                                StorageService.setSoundEnabled(value);
+                              },
                             ),
-                          ),
-                          value: _hapticEnabled,
-                          activeThumbColor: currentTheme.switchActiveColor,
-                          onChanged: (value) {
-                            setState(() => _hapticEnabled = value);
-                            StorageService.setHapticEnabled(value);
-                          },
+                            Divider(
+                              height: 1,
+                              thickness: 1,
+                              indent: 20,
+                              endIndent: 20,
+                              color: currentTheme.border.withValues(alpha: 0.2),
+                            ),
+                            SwitchListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              title: Text(
+                                'Haptic Feedback',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: currentTheme.textPrimary,
+                                ),
+                              ),
+                              value: _hapticEnabled,
+                              activeThumbColor: currentTheme.switchActiveColor,
+                              onChanged: (value) {
+                                setState(() => _hapticEnabled = value);
+                                StorageService.setHapticEnabled(value);
+                              },
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 28),

@@ -6,6 +6,7 @@ import '../models/app_theme.dart';
 import '../models/game_models.dart';
 import '../providers/game_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/sound_service.dart';
 import '../widgets/floating_particles.dart';
 import '../widgets/game_button.dart';
 import '../widgets/game_logo.dart';
@@ -261,7 +262,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        SoundService.playTap();
+        onTap();
+      },
       child: Container(
         width: 44,
         height: 44,

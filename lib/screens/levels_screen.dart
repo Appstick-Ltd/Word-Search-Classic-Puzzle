@@ -5,6 +5,7 @@ import '../models/app_theme.dart';
 import '../providers/game_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/haptics.dart';
+import '../services/sound_service.dart';
 import '../widgets/floating_particles.dart';
 import 'game_screen.dart';
 
@@ -256,7 +257,10 @@ class _LevelNodeButtonState extends State<_LevelNodeButton> {
 
     return GestureDetector(
       onTapDown: (_) {
-        if (widget.onTap != null) setState(() => _isPressed = true);
+        if (widget.onTap != null) {
+          setState(() => _isPressed = true);
+          SoundService.playTap();
+        }
       },
       onTapUp: (_) {
         if (widget.onTap != null) setState(() => _isPressed = false);
