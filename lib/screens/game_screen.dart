@@ -2,13 +2,15 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_theme.dart';
 import '../models/game_models.dart';
 import '../providers/game_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/haptics.dart';
+import '../widgets/confetti_overlay.dart';
+import '../widgets/praise_toast.dart';
+import '../widgets/victory_dialog.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
@@ -17,8 +19,45 @@ class GameScreen extends ConsumerStatefulWidget {
   ConsumerState<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends ConsumerState<GameScreen> {
+class _GameScreenState extends ConsumerState<GameScreen>
+    with SingleTickerProviderStateMixin {
   final GlobalKey _gridKey = GlobalKey();
+  late final AnimationController _pulseController;
+
+  // Praise toast state
+  String? _currentPraise;
+  Color _praiseColor = const Color(0xFF10B981);
+  int _lastFoundWordCount = 0;
+
+  static const _praiseList = [
+    'AWESOME!',
+    'GREAT!',
+    'NICE!',
+    'PERFECT!',
+    'SUPERB!',
+    'BRILLIANT!',
+    'EXCELLENT!',
+    'GENIUS!',
+  ];
+  final Random _rnd = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
+    final state = ref.read(gameProvider);
+    _lastFoundWordCount = state.words.where((w) => w.isFound).length;
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   void _onPointerDown(
     PointerDownEvent event,
@@ -69,83 +108,240 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return null;
   }
 
+  void _checkForWordFound(GameState gameState) {
+    final currentFound = gameState.words.where((w) => w.isFound).length;
+    if (currentFound > _lastFoundWordCount) {
+      final newlyFound = gameState.words.lastWhere((w) => w.isFound);
+      _triggerPraise(newlyFound.color);
+      _lastFoundWordCount = currentFound;
+
+      if (gameState.status == GameStatus.won) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            _showVictoryOverlay(gameState);
+          }
+        });
+      }
+    } else if (currentFound < _lastFoundWordCount) {
+      _lastFoundWordCount = currentFound;
+    }
+  }
+
+  void _triggerPraise(Color color) {
+    setState(() {
+      _currentPraise = _praiseList[_rnd.nextInt(_praiseList.length)];
+      _praiseColor = color;
+    });
+  }
+
+  void _showVictoryOverlay(GameState gameState) {
+    final appTheme = ref.read(themeProvider);
+    final notifier = ref.read(gameProvider.notifier);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (ctx) {
+        return VictoryDialog(
+          level: gameState.level,
+          isRandom: gameState.isRandom,
+          wordCount: gameState.words.length,
+          appTheme: appTheme,
+          onNextLevel: () {
+            Navigator.of(ctx).pop();
+            notifier.nextLevel();
+          },
+          onRestart: () {
+            Navigator.of(ctx).pop();
+            notifier.restartCurrentLevel();
+          },
+          onHome: () {
+            Navigator.of(ctx).pop();
+            Navigator.of(context).pop();
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameState = ref.watch(gameProvider);
     final notifier = ref.read(gameProvider.notifier);
     final appTheme = ref.watch(themeProvider);
-    return Scaffold(
-      backgroundColor: appTheme.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: appTheme.appBarFg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: appTheme.appBarFg,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: gameState.isRandom
-                ? (gameState.difficulty?.color.withValues(alpha: 0.15) ??
-                      appTheme.surfaceVariant)
-                : appTheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            gameState.isRandom
-                ? 'RANDOM • ${gameState.difficulty?.label.toUpperCase() ?? "PUZZLE"}'
-                : 'LEVEL ${gameState.level}',
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 16,
-              letterSpacing: 1.0,
-              color: gameState.isRandom
-                  ? (gameState.difficulty?.darkColor ?? appTheme.textPrimary)
-                  : appTheme.textPrimary,
-            ),
-          ),
-        ),
-        actions: [
-          IconButton(
+
+    // Watch for word discoveries
+    _checkForWordFound(gameState);
+
+    final currentWordText = gameState.currentSelection
+        .map((c) => gameState.grid[c.row][c.col])
+        .join();
+
+    return ConfettiOverlay(
+      isPlaying: gameState.status == GameStatus.won,
+      child: Scaffold(
+        backgroundColor: appTheme.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          foregroundColor: appTheme.appBarFg,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          centerTitle: true,
+          leading: IconButton(
             icon: Icon(
-              Icons.replay_rounded,
-              color: appTheme.textMuted,
-              size: 24,
+              Icons.arrow_back_ios_new_rounded,
+              size: 20,
+              color: appTheme.appBarFg,
             ),
-            onPressed: () {
-              Haptics.select();
-              notifier.restartCurrentLevel();
-            },
+            onPressed: () => Navigator.of(context).pop(),
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: _buildGridArea(gameState, notifier, appTheme),
+          title: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  gameState.isRandom
+                      ? (gameState.difficulty?.color ?? appTheme.playBg)
+                      : appTheme.playBg,
+                  Color.lerp(
+                    gameState.isRandom
+                        ? (gameState.difficulty?.color ?? appTheme.playBg)
+                        : appTheme.playBg,
+                    Colors.black,
+                    0.18,
+                  )!,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  offset: const Offset(0, 3),
+                  blurRadius: 6,
                 ),
+              ],
+            ),
+            child: Text(
+              gameState.isRandom
+                  ? 'RANDOM • ${gameState.difficulty?.label.toUpperCase() ?? "PUZZLE"}'
+                  : 'LEVEL ${gameState.level}',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+                letterSpacing: 1.2,
+                color: Colors.white,
               ),
             ),
-            const SizedBox(height: 8),
-            if (gameState.status == GameStatus.won)
-              _buildCompletionSection(context, gameState, notifier, appTheme)
-            else
-              _buildWordChips(gameState, appTheme),
-            const SizedBox(height: 8),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(
+                Icons.replay_rounded,
+                color: appTheme.textMuted,
+                size: 26,
+              ),
+              onPressed: () {
+                Haptics.select();
+                notifier.restartCurrentLevel();
+              },
+            ),
           ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Live Selection Floating Indicator
+              SizedBox(
+                height: 38,
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: currentWordText.isNotEmpty
+                        ? Container(
+                            key: const ValueKey('active_pill'),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  appTheme.playBg,
+                                  Color.lerp(appTheme.playBg, Colors.white, 0.2)!,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: appTheme.playBg.withValues(alpha: 0.5),
+                                  offset: const Offset(0, 4),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              currentWordText.split('').join(' • '),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                                letterSpacing: 2.0,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            'SWIPE TO CONNECT LETTERS',
+                            key: const ValueKey('hint_text'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.5,
+                              color: appTheme.textMuted.withValues(alpha: 0.6),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              // Game Grid Area with Praise Toast Stack
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        _buildGridArea(gameState, notifier, appTheme),
+                        if (_currentPraise != null)
+                          Positioned(
+                            top: 20,
+                            child: PraiseToast(
+                              text: _currentPraise!,
+                              color: _praiseColor,
+                              onComplete: () {
+                                if (mounted) {
+                                  setState(() => _currentPraise = null);
+                                }
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Word Target Chips
+              _buildWordChips(gameState, appTheme),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -156,45 +352,77 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: 10,
+        runSpacing: 10,
         alignment: WrapAlignment.center,
         children: state.words.map((placement) {
           final isFound = placement.isFound;
-          return AnimatedContainer(
+          return AnimatedScale(
+            scale: isFound ? 1.0 : 1.0,
             duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isFound ? placement.color : appTheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isFound
-                    ? placement.color
-                    : appTheme.border.withValues(alpha: 0.4),
-                width: 1.5,
+            curve: Curves.easeOutBack,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: isFound
+                    ? LinearGradient(
+                        colors: [
+                          placement.color,
+                          Color.lerp(placement.color, Colors.black, 0.15)!,
+                        ],
+                      )
+                    : null,
+                color: isFound ? null : appTheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isFound
+                      ? Colors.white
+                      : appTheme.border.withValues(alpha: 0.4),
+                  width: 2.0,
+                ),
+                boxShadow: isFound
+                    ? [
+                        BoxShadow(
+                          color: placement.color.withValues(alpha: 0.5),
+                          offset: const Offset(0, 4),
+                          blurRadius: 8,
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          offset: const Offset(0, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
               ),
-              boxShadow: isFound
-                  ? [
-                      BoxShadow(
-                        color: placement.color.withValues(alpha: 0.35),
-                        offset: const Offset(0, 3),
-                        blurRadius: 4,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Text(
-              placement.word,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                decoration: isFound
-                    ? TextDecoration.lineThrough
-                    : TextDecoration.none,
-                decorationThickness: 2.0,
-                decorationColor: Colors.white,
-                color: isFound ? Colors.white : appTheme.textPrimary,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isFound) ...[
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    placement.word,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                      decoration: isFound
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                      decorationThickness: 2.5,
+                      decorationColor: Colors.white,
+                      color: isFound ? Colors.white : appTheme.textPrimary,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -217,20 +445,25 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           height: maxSide,
           decoration: BoxDecoration(
             color: appTheme.cardBg,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: appTheme.border.withValues(alpha: 0.5),
-              width: 2.0,
+              color: const Color(0xFFFFD152).withValues(alpha: 0.7),
+              width: 3.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: const Color(0xFFC78C06).withValues(alpha: 0.35),
                 offset: const Offset(0, 6),
-                blurRadius: 12,
+                blurRadius: 0,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                offset: const Offset(0, 12),
+                blurRadius: 20,
               ),
             ],
           ),
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(10),
           child: Listener(
             key: _gridKey,
             behavior: HitTestBehavior.opaque,
@@ -240,15 +473,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: CustomPaint(
-                    painter: WordPillPainter(
-                      gridSize: gameState.gridSize,
-                      foundWords: gameState.words
-                          .where((w) => w.isFound)
-                          .toList(),
-                      currentSelection: gameState.currentSelection,
-                      selectionColor: appTheme.playBg,
-                    ),
+                  child: AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        painter: WordPillPainter(
+                          gridSize: gameState.gridSize,
+                          foundWords: gameState.words
+                              .where((w) => w.isFound)
+                              .toList(),
+                          currentSelection: gameState.currentSelection,
+                          selectionColor: appTheme.playBg,
+                          pulseValue: _pulseController.value,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 GridView.builder(
@@ -264,14 +503,31 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     final r = index ~/ gameState.gridSize;
                     final c = index % gameState.gridSize;
                     final letter = gameState.grid[r][c];
+                    final isSelected = gameState.currentSelection.contains(
+                      GridCoordinate(r, c),
+                    );
 
-                    return Center(
-                      child: Text(
-                        letter,
-                        style: TextStyle(
-                          fontSize: _fontSizeForGrid(gameState.gridSize),
-                          fontWeight: FontWeight.w900,
-                          color: appTheme.textPrimary,
+                    return AnimatedScale(
+                      scale: isSelected ? 1.25 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOutBack,
+                      child: Center(
+                        child: Text(
+                          letter,
+                          style: TextStyle(
+                            fontSize: _fontSizeForGrid(gameState.gridSize),
+                            fontWeight: FontWeight.w900,
+                            color: isSelected ? Colors.white : appTheme.textPrimary,
+                            shadows: isSelected
+                                ? const [
+                                    Shadow(
+                                      color: Colors.black45,
+                                      offset: Offset(0, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ]
+                                : null,
+                          ),
                         ),
                       ),
                     );
@@ -295,179 +551,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     if (size <= 11) return 14;
     return 13;
   }
-
-  Widget _buildCompletionSection(
-    BuildContext context,
-    GameState gameState,
-    GameNotifier notifier,
-    AppThemeData appTheme,
-  ) {
-    final nextText = gameState.isRandom ? 'NEW PUZZLE' : 'NEXT LEVEL';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.emoji_events_rounded,
-                  color: appTheme.playBg,
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'CONGRATULATIONS!',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    color: appTheme.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () {
-              Haptics.select();
-              notifier.nextLevel();
-            },
-            child: Container(
-              width: double.infinity,
-              height: 44,
-              decoration: BoxDecoration(
-                color: appTheme.playBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: appTheme.playBorder, width: 2.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: appTheme.playShadow,
-                    offset: const Offset(0, 3),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    nextText,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {
-              Haptics.select();
-              Navigator.of(context).pop();
-            },
-            child: Container(
-              width: double.infinity,
-              height: 44,
-              decoration: BoxDecoration(
-                color: appTheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: appTheme.border.withValues(alpha: 0.6),
-                  width: 2.0,
-                ),
-              ),
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.home_rounded,
-                        color: appTheme.textPrimary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'HOME',
-                        style: TextStyle(
-                          color: appTheme.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {
-              Haptics.select();
-              launchUrl(
-                Uri.parse('https://ko-fi.com/sidhant947'),
-                mode: LaunchMode.externalApplication,
-              );
-            },
-            child: Container(
-              width: double.infinity,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFDD00),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE5C700), width: 2.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0xFFC4AA00),
-                    offset: Offset(0, 3),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.coffee_rounded,
-                        color: Color(0xFF000000),
-                        size: 20,
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'BUY ME A COFFEE',
-                        style: TextStyle(
-                          color: Color(0xFF000000),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class WordPillPainter extends CustomPainter {
@@ -475,12 +558,14 @@ class WordPillPainter extends CustomPainter {
   final List<WordPlacement> foundWords;
   final List<GridCoordinate> currentSelection;
   final Color selectionColor;
+  final double pulseValue;
 
   WordPillPainter({
     required this.gridSize,
     required this.foundWords,
     required this.currentSelection,
     required this.selectionColor,
+    this.pulseValue = 0.0,
   });
 
   @override
@@ -489,8 +574,9 @@ class WordPillPainter extends CustomPainter {
 
     final cellWidth = size.width / gridSize;
     final cellHeight = size.height / gridSize;
-    final strokeWidth = min(cellWidth, cellHeight) * 0.78;
+    final strokeWidth = min(cellWidth, cellHeight) * 0.82;
 
+    // Found words (solid vibrant capsule with border)
     for (final placement in foundWords) {
       if (placement.coordinates.isEmpty) continue;
       _drawCapsule(
@@ -499,20 +585,26 @@ class WordPillPainter extends CustomPainter {
         placement.coordinates.last,
         cellWidth,
         cellHeight,
-        placement.color.withValues(alpha: 0.35),
+        placement.color.withValues(alpha: 0.55),
         strokeWidth,
+        hasBorder: true,
+        borderColor: placement.color,
       );
     }
 
+    // Current drag selection with pulsing glow
     if (currentSelection.isNotEmpty) {
+      final currentAlpha = 0.65 + pulseValue * 0.2;
       _drawCapsule(
         canvas,
         currentSelection.first,
         currentSelection.last,
         cellWidth,
         cellHeight,
-        selectionColor.withValues(alpha: 0.38),
+        selectionColor.withValues(alpha: currentAlpha),
         strokeWidth,
+        hasBorder: true,
+        borderColor: Colors.white,
       );
     }
   }
@@ -524,8 +616,10 @@ class WordPillPainter extends CustomPainter {
     double cellWidth,
     double cellHeight,
     Color color,
-    double strokeWidth,
-  ) {
+    double strokeWidth, {
+    bool hasBorder = false,
+    Color? borderColor,
+  }) {
     final startCenter = Offset(
       (start.col + 0.5) * cellWidth,
       (start.row + 0.5) * cellHeight,
@@ -535,13 +629,32 @@ class WordPillPainter extends CustomPainter {
       (end.row + 0.5) * cellHeight,
     );
 
-    final paint = Paint()
+    // Fill
+    final fillPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = strokeWidth;
 
-    canvas.drawLine(startCenter, endCenter, paint);
+    canvas.drawLine(startCenter, endCenter, fillPaint);
+
+    // Glowing border outline
+    if (hasBorder && borderColor != null) {
+      final borderPaint = Paint()
+        ..color = borderColor.withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = strokeWidth * 0.98;
+
+      final highlightPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = strokeWidth * 0.25;
+
+      canvas.drawLine(startCenter, endCenter, borderPaint);
+      canvas.drawLine(startCenter, endCenter, highlightPaint);
+    }
   }
 
   @override
@@ -549,6 +662,7 @@ class WordPillPainter extends CustomPainter {
     return oldDelegate.gridSize != gridSize ||
         oldDelegate.foundWords != foundWords ||
         oldDelegate.currentSelection != currentSelection ||
-        oldDelegate.selectionColor != selectionColor;
+        oldDelegate.selectionColor != selectionColor ||
+        oldDelegate.pulseValue != pulseValue;
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/app_theme.dart';
 import '../providers/theme_provider.dart';
+import '../widgets/floating_particles.dart';
 
 class HowToPlayScreen extends ConsumerWidget {
   const HowToPlayScreen({super.key});
@@ -12,32 +13,47 @@ class HowToPlayScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: appTheme.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: appTheme.appBarFg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: appTheme.appBarFg,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: FloatingParticles(
+              particleColor: appTheme.textPrimary.withValues(alpha: 0.08),
+              count: 16,
+            ),
           ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'HOW TO PLAY',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.5,
-            color: appTheme.appBarFg,
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 20,
+                          color: appTheme.appBarFg,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      Text(
+                        'HOW TO PLAY',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          letterSpacing: 1.5,
+                          color: appTheme.appBarFg,
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
           children: [
             _buildSectionHeader(
               icon: Icons.track_changes_rounded,
@@ -180,8 +196,13 @@ class HowToPlayScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ],
+  ),
+),
+],
+),
+);
+}
 
   Widget _buildDivider(AppThemeData appTheme) {
     return Padding(
