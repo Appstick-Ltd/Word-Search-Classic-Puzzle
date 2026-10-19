@@ -66,14 +66,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Star / GitHub button
+                      // Info / Legal button
                       _buildTopIconButton(
-                        icon: Icons.star_rounded,
-                        color: const Color(0xFFFFA502),
-                        onTap: () => launchUrl(
-                          Uri.parse('https://github.com/sidhant947/FindWords'),
-                          mode: LaunchMode.externalApplication,
-                        ),
+                        icon: Icons.info_outline_rounded,
+                        color: const Color(0xFF00CEC9),
+                        onTap: () => _showAboutAndLegalDialog(context, appTheme),
                       ),
                       // Level Badge Pill
                       Container(
@@ -119,14 +116,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ],
                         ),
                       ),
-                      // Support / Heart button
+                      // Settings shortcut button
                       _buildTopIconButton(
-                        icon: Icons.favorite_rounded,
-                        color: const Color(0xFFFF4757),
-                        onTap: () => launchUrl(
-                          Uri.parse('https://ko-fi.com/sidhant947'),
-                          mode: LaunchMode.externalApplication,
-                        ),
+                        icon: Icons.settings_rounded,
+                        color: const Color(0xFFFFA502),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -418,6 +416,174 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         );
       },
+    );
+  }
+
+  void _showAboutAndLegalDialog(BuildContext context, AppThemeData appTheme) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  appTheme.dialogBg,
+                  Color.lerp(appTheme.dialogBg, appTheme.surfaceVariant, 0.3)!,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: const Color(0xFF00CEC9),
+                width: 2.5,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black38,
+                  blurRadius: 24,
+                  offset: Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00CEC9).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.policy_rounded,
+                    color: Color(0xFF00CEC9),
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'WORD SEARCH',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: appTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Classic Puzzle by Appstick Ltd',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: appTheme.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildLegalDialogTile(
+                  icon: Icons.privacy_tip_rounded,
+                  iconColor: const Color(0xFF0984E3),
+                  title: 'Privacy Policy',
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    launchUrl(
+                      Uri.parse('https://wordsearch.appstick.com.bd/privacy-policy.html'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildLegalDialogTile(
+                  icon: Icons.description_rounded,
+                  iconColor: const Color(0xFF6C5CE7),
+                  title: 'Terms & Conditions',
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    launchUrl(
+                      Uri.parse('https://wordsearch.appstick.com.bd/terms.html'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildLegalDialogTile(
+                  icon: Icons.language_rounded,
+                  iconColor: const Color(0xFF00B894),
+                  title: 'Official Website',
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    launchUrl(
+                      Uri.parse('https://wordsearch.appstick.com.bd/'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(
+                    'CLOSE',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: appTheme.textMuted,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLegalDialogTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.open_in_new_rounded,
+              size: 16,
+              color: Colors.white54,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

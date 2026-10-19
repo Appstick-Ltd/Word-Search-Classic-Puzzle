@@ -26,6 +26,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _soundEnabled = StorageService.getSoundEnabled();
   }
 
+  Future<void> _openUrl(String urlString) async {
+    Haptics.select();
+    final uri = Uri.parse(urlString);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open link: $urlString'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening link: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentTheme = ref.watch(themeProvider);
@@ -75,33 +103,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
                     children: [
-                      // Backer / Support Card
+                      // Official Website / Support Card
                       GestureDetector(
-                        onTap: () {
-                          Haptics.select();
-                          launchUrl(
-                            Uri.parse('https://ko-fi.com/sidhant947/tiers'),
-                            mode: LaunchMode.externalApplication,
-                          );
-                        },
+                        onTap: () => _openUrl('https://wordsearch.appstick.com.bd/'),
                         child: Container(
                           width: double.infinity,
                           height: 56,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [
-                                Color(0xFFFF5E5B),
-                                Color(0xFFD63031),
+                                Color(0xFF00B894),
+                                Color(0xFF009688),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                              color: const Color(0xFFFF7675),
+                              color: const Color(0xFF55EFC4),
                               width: 2.0,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFD63031).withValues(alpha: 0.4),
+                                color: const Color(0xFF009688).withValues(alpha: 0.35),
                                 offset: const Offset(0, 4),
                                 blurRadius: 10,
                               ),
@@ -111,13 +133,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.favorite_rounded,
+                                Icons.public_rounded,
                                 color: Colors.white,
                                 size: 22,
                               ),
                               SizedBox(width: 10),
                               Text(
-                                'Become a Backer',
+                                'Official Website',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -308,7 +330,195 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           }).toList(),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 28),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+                        child: Text(
+                          'LEGAL & ABOUT',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                            color: currentTheme.textMuted,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: currentTheme.cardBg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: currentTheme.border.withValues(alpha: 0.4),
+                            width: 2.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              offset: const Offset(0, 4),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0984E3).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.privacy_tip_rounded,
+                                  color: Color(0xFF0984E3),
+                                  size: 22,
+                                ),
+                              ),
+                              title: Text(
+                                'Privacy Policy',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: currentTheme.textPrimary,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'How we respect and protect your data',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: currentTheme.textMuted,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.open_in_new_rounded,
+                                size: 18,
+                                color: currentTheme.textMuted,
+                              ),
+                              onTap: () => _openUrl('https://wordsearch.appstick.com.bd/privacy-policy.html'),
+                            ),
+                            Divider(
+                              height: 1,
+                              thickness: 1,
+                              indent: 20,
+                              endIndent: 20,
+                              color: currentTheme.border.withValues(alpha: 0.2),
+                            ),
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.description_rounded,
+                                  color: Color(0xFF6C5CE7),
+                                  size: 22,
+                                ),
+                              ),
+                              title: Text(
+                                'Terms & Conditions',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: currentTheme.textPrimary,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Usage terms and license details',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: currentTheme.textMuted,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.open_in_new_rounded,
+                                size: 18,
+                                color: currentTheme.textMuted,
+                              ),
+                              onTap: () => _openUrl('https://wordsearch.appstick.com.bd/terms.html'),
+                            ),
+                            Divider(
+                              height: 1,
+                              thickness: 1,
+                              indent: 20,
+                              endIndent: 20,
+                              color: currentTheme.border.withValues(alpha: 0.2),
+                            ),
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00B894).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.business_rounded,
+                                  color: Color(0xFF00B894),
+                                  size: 22,
+                                ),
+                              ),
+                              title: Text(
+                                'Developer',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: currentTheme.textPrimary,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Appstick Ltd (appstick.com.bd)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: currentTheme.textMuted,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.open_in_new_rounded,
+                                size: 18,
+                                color: currentTheme.textMuted,
+                              ),
+                              onTap: () => _openUrl('https://appstick.com.bd/'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Word Search - Classic Puzzle',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: currentTheme.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Version 1.0.0 (Build 1)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: currentTheme.textMuted.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
                     ],
                   ),
                 ),

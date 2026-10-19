@@ -1,4 +1,4 @@
-package com.sidhant.findwords
+package com.appstick.wordsearch
 
 import io.flutter.embedding.android.FlutterActivity
 

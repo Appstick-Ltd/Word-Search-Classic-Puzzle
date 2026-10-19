@@ -7,6 +7,7 @@ import '../models/app_theme.dart';
 import '../models/game_models.dart';
 import '../providers/game_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/ad_service.dart';
 import '../services/haptics.dart';
 import '../services/sound_service.dart';
 import '../widgets/confetti_overlay.dart';
@@ -151,7 +152,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
           appTheme: appTheme,
           onNextLevel: () {
             Navigator.of(ctx).pop();
-            notifier.nextLevel();
+            AdService.instance.showInterstitialAd(
+              onComplete: () {
+                notifier.nextLevel();
+              },
+            );
           },
           onRestart: () {
             Navigator.of(ctx).pop();
